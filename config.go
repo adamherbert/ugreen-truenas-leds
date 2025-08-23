@@ -18,6 +18,7 @@ const (
 )
 
 type Config struct {
+	device            string        `yaml:"device"`
 	PollInterval      time.Duration `yaml:"poll_interval"`
 	RainbowCycleTime  time.Duration `yaml:"rainbow_cycle_time"`
 	EnableRainbow     *bool         `yaml:"enable_rainbow"`

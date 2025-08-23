@@ -24,3 +24,6 @@ Brightness: scaled to the delta of activity over the last polling period.
 5 = disk 4
 6 = disk 5
 7 = disk 6
+
+## i2c
+$ i2cdetect -l

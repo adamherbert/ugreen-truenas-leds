@@ -15,6 +15,7 @@ import (
 
 var (
 	confFile = flag.String("config", "config.yaml", "path to the config file")
+	device   = flag.String("device", "/dev/i2c-2", "I2C device path")
 )
 
 // ActivityMonitor encapsulates disk and network activity monitoring and LED control
@@ -38,7 +39,12 @@ func NewActivityMonitor(configPath string) (*ActivityMonitor, error) {
 		return nil, fmt.Errorf("error discovering disks: %v", err)
 	}
 
-	leds, err := NewUGreenLeds()
+	path := configLoader.Config().device
+	if path == "" {
+		path = *device // Default I2C device path
+	}
+
+	leds, err := NewUGreenLeds(path)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize LEDs: %v", err)
 	}
@@ -272,7 +278,8 @@ func main() {
 				fmt.Printf("Invalid led_id: %v\n", err)
 				os.Exit(1)
 			}
-			leds, err := NewUGreenLeds()
+			fmt.Printf("Getting status for LED %d on i2c bus %s\n", ledID, *device)
+			leds, err := NewUGreenLeds(*device)
 			if err != nil {
 				log.Fatalf("Failed to open LEDs: %v", err)
 			}
@@ -294,7 +301,8 @@ func main() {
 			g, _ := strconv.Atoi(flag.Arg(3))
 			b, _ := strconv.Atoi(flag.Arg(4))
 			brightness, _ := strconv.Atoi(flag.Arg(5))
-			leds, err := NewUGreenLeds()
+			fmt.Printf("Setting status for LED %d on i2c bus %s\n", ledID, *device)
+			leds, err := NewUGreenLeds(*device)
 			if err != nil {
 				log.Fatalf("Failed to open LEDs: %v", err)
 			}

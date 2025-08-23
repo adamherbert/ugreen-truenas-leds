@@ -63,8 +63,8 @@ type UGreenLeds struct {
 }
 
 // NewUGreenLeds initializes and returns a new UGreenLeds instance
-func NewUGreenLeds() (*UGreenLeds, error) {
-	fd, err := syscall.Open("/dev/i2c-0", syscall.O_RDWR, 0600)
+func NewUGreenLeds(path string) (*UGreenLeds, error) {
+	fd, err := syscall.Open(path, syscall.O_RDWR, 0600)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open I2C device: %w", err)
 	}

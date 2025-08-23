@@ -1,1 +1,2 @@
+device: /dev/i2c-2
 poll_interval: 100ms

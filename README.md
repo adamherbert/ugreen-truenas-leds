@@ -1,29 +1,27 @@
 # ugreen-truenas-leds
 
 This is a quick and dirty program to poll for disk and network activity on
-a UGREEN DXP6800 Pro running TrueNAS SCALE, and update the front panel
+a UGREEN DXP6800 Pro and other models, and update the front panel
 LEDs accordingly.
 
-It has no settings (yet), everything is hardcoded.
+Take a look at `config.yaml` for the settings.
 
-These are the LED colors:
+## Building
 
-- Red: disk write or lan transmit.
-- Blue: disk read or lan receive.
+```bash
+go build -o truenas-leds .
+```
 
-The LEDs will appear purple if a mixture of activity is happening.
+## Running
 
-Brightness: scaled to the delta of activity over the last polling period.
+```bash
+./truenas-leds --config=config.yaml [--device=/dev/i2c-2]
+```
 
-## LEDs on DXP6800 Pro
-0 = power
-1 = lan
-2 = disk 1
-3 = disk 2
-4 = disk 3
-5 = disk 4
-6 = disk 5
-7 = disk 6
+## Finding your i2c device
 
-## i2c
+The default device may not work for you.
+
+```bash
 $ i2cdetect -l
+```

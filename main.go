@@ -167,23 +167,31 @@ func (am *ActivityMonitor) Monitor() {
 				// log.Printf("deltas for %s: activity:%d max:%d, bright:%d", dev, activity, am.maxActivity, am.brightnessForActivity(activity, am.maxActivity))
 			}
 			for i, disk := range am.disks {
-				am.leds.SetLedMode(i+2, LedModeOn, nil)
+				// Control LEDs for available disks (disk1-disk8 are indices 2-9)
+				ledIndex := i + 2
+				if !IsValidLedIndex(ledIndex) {
+					// Skip disks that don't have corresponding LEDs
+					log.Printf("Warning: Disk %d (%s) has no corresponding LED (only %d disk LEDs available)", i+1, disk.Name, GetMaxLedIndex()-1)
+					continue
+				}
+
+				am.leds.SetLedMode(ledIndex, LedModeOn, nil)
 				dev := disk.Name
 				delta := deltas[dev]
 				if delta.Activity == 0 {
 					if !*conf.EnableRainbow {
-						am.leds.SetLedMode(i+2, LedModeOff, nil)
+						am.leds.SetLedMode(ledIndex, LedModeOff, nil)
 					} else {
 						// Use rainbow color for inactive disks
 						r, g, b := am.rainbowColor(i+1, 1+len(am.disks), rainbowTime)
-						am.leds.SetLedColor(i+2, r, g, b)
-						am.leds.SetLedBrightness(i+2, *conf.RainbowBrightness)
+						am.leds.SetLedColor(ledIndex, r, g, b)
+						am.leds.SetLedBrightness(ledIndex, *conf.RainbowBrightness)
 					}
 				} else {
-					am.leds.SetLedMode(i+2, LedModeOn, nil)
-					am.leds.SetLedColor(i+2, 255, 255, 255)
+					am.leds.SetLedMode(ledIndex, LedModeOn, nil)
+					am.leds.SetLedColor(ledIndex, 255, 255, 255)
 					brightness := am.brightnessForActivity(delta.Activity, am.maxActivity)
-					am.leds.SetLedBrightness(i+2, brightness)
+					am.leds.SetLedBrightness(ledIndex, brightness)
 				}
 			}
 			prevStats = currStats

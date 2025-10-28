@@ -30,7 +30,17 @@ const (
 )
 
 var ledNames = []string{
-	"power", "lan", "disk1", "disk2", "disk3", "disk4", "disk5", "disk6",
+	"power", "lan", "disk1", "disk2", "disk3", "disk4", "disk5", "disk6", "disk7", "disk8",
+}
+
+// GetMaxLedIndex returns the maximum valid LED index
+func GetMaxLedIndex() int {
+	return len(ledNames) - 1
+}
+
+// IsValidLedIndex checks if the given LED index is valid
+func IsValidLedIndex(index int) bool {
+	return index >= 0 && index < len(ledNames)
 }
 
 type i2cSmbusData struct {
@@ -87,14 +97,23 @@ func (u *UGreenLeds) Close() {
 }
 
 func (u *UGreenLeds) SetLedColor(id int, r, g, b byte) error {
+	if !IsValidLedIndex(id) {
+		return fmt.Errorf("invalid LED index %d (valid range: 0-%d)", id, GetMaxLedIndex())
+	}
 	return u.setLedColor(id, r, g, b)
 }
 
 func (u *UGreenLeds) SetLedBrightness(id int, brightness byte) error {
+	if !IsValidLedIndex(id) {
+		return fmt.Errorf("invalid LED index %d (valid range: 0-%d)", id, GetMaxLedIndex())
+	}
 	return u.setLedBrightness(id, brightness)
 }
 
 func (u *UGreenLeds) SetLedMode(id int, mode byte, params []byte) error {
+	if !IsValidLedIndex(id) {
+		return fmt.Errorf("invalid LED index %d (valid range: 0-%d)", id, GetMaxLedIndex())
+	}
 	return u.setLedMode(id, mode, params)
 }
 
@@ -294,6 +313,11 @@ func confirmStatus(fd int, id int, wantOn *bool) bool {
 }
 
 func modifyLedWithRetry(fd int, id int, command byte, params []byte, wantOn *bool) error {
+	// Validate LED index before attempting to modify
+	if !IsValidLedIndex(id) {
+		return fmt.Errorf("invalid LED index %d (valid range: 0-%d)", id, GetMaxLedIndex())
+	}
+
 	var lastErr error
 	for retry := 0; retry < maxRetry; retry++ {
 		lastErr = writeLedCommand(fd, id, command, params)

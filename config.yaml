@@ -1,2 +1,5 @@
 device: /dev/i2c-2
 poll_interval: 100ms
+rainbow_cycle_time: 3s
+enable_rainbow: true
+rainbow_brightness: 48

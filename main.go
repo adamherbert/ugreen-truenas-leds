@@ -39,7 +39,7 @@ func NewActivityMonitor(configPath string) (*ActivityMonitor, error) {
 		return nil, fmt.Errorf("error discovering disks: %v", err)
 	}
 
-	path := configLoader.Config().device
+	path := configLoader.Config().Device
 	if path == "" {
 		path = *device // Default I2C device path
 	}

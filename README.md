@@ -1,77 +1,143 @@
 # ugreen-truenas-leds
 
-This is a quick and dirty program to poll for disk and network activity on
-a UGREEN DXP6800 Pro and other models, and update the front panel
-LEDs accordingly.
+Polls disk and network activity on a UGREEN DXP6800 Pro (and other DXP models)
+and drives the front-panel LEDs accordingly.
 
-## Configuration
+Ships as a container for TrueNAS SCALE; a bare-metal install path is still
+supported for non-TrueNAS hosts.
 
-The program uses a YAML configuration file (default: `config.yaml`) to control its behavior. Here's a complete configuration example with all available options:
+## Install on TrueNAS SCALE (recommended)
 
-```yaml
-# I2C device path for LED control
-# Find your device with: i2cdetect -l
-device: /dev/i2c-2
+Requires SCALE 24.10 or later (Docker-based Apps).
 
-# How often to poll for disk and network activity
-# Valid range: 10ms to 5000ms
-# Default: 100ms
-poll_interval: 100ms
+### 1. Create a dataset for the app
 
-# Rainbow cycle time for inactive disks (when enable_rainbow is true)
-# How long it takes to complete one full rainbow color cycle
-# Valid range: 1s to 10s
-# Default: 3s
-rainbow_cycle_time: 3s
+On a data pool (not the boot-pool — it is overwritten on upgrade):
 
-# Enable rainbow color cycling for inactive disks
-# When true: inactive disks show rainbow colors
-# When false: inactive disks turn off
-# Default: true
-enable_rainbow: true
-
-# Brightness level for rainbow colors (0-255)
-# Only applies when enable_rainbow is true
-# Default: 48
-rainbow_brightness: 48
+```
+/mnt/<pool>/apps/truenas-leds/
 ```
 
-### Configuration Options Explained
+### 2. Drop in the config
 
-| Option | Type | Default | Description |
-|--------|------|---------|-------------|
-| `device` | string | `/dev/i2c-2` | I2C device path for communicating with LEDs |
-| `poll_interval` | duration | `100ms` | Frequency of disk/network activity polling |
-| `rainbow_cycle_time` | duration | `3s` | Time for one complete rainbow cycle |
-| `enable_rainbow` | boolean | `true` | Show rainbow colors on inactive disks |
-| `rainbow_brightness` | integer | `48` | Brightness level for rainbow (0-255) |
+Copy [`config.yaml`](config.yaml) into that dataset. The default `/dev/i2c-2`
+works on most DXP boards; if yours differs, edit the `device:` key. Find the
+right bus with `i2cdetect -l` on the host.
 
-### LED Behavior
+### 3. Install the Post Init script
 
-- **Red LED**: Disk write activity or network transmit
-- **Blue LED**: Disk read activity or network receive  
-- **Purple LED**: Mixed read/write or transmit/receive activity
-- **Rainbow Colors**: Inactive disks (when `enable_rainbow: true`)
-- **Off**: Inactive disks (when `enable_rainbow: false`)
+The container needs `i2c-dev` and `i2c-i801` loaded on the host. Copy
+[`deploy/truenas/post-init.sh`](deploy/truenas/post-init.sh) to your dataset,
+then register it:
 
-**Brightness**: Automatically scaled based on the intensity of disk/network activity.
+**System Settings → Advanced → Init/Shutdown Scripts → Add**
 
-## Building
+| Field    | Value                                               |
+|----------|-----------------------------------------------------|
+| Type     | Script                                              |
+| Script   | `/mnt/<pool>/apps/truenas-leds/post-init.sh`        |
+| When     | Post Init                                           |
+| Timeout  | 10                                                  |
+
+Reboot once so the modules load.
+
+### 4. Install the Custom App
+
+**Apps → Discover Apps → Install Custom App.** Paste the contents of
+[`deploy/truenas/docker-compose.yaml`](deploy/truenas/docker-compose.yaml),
+replacing `POOL` with your pool name.
+
+### 5. Verify
+
+- `lsmod | grep -E '^i2c_(dev|i801)'` — both modules loaded.
+- `ls /dev/i2c-*` — character device exists.
+- Apps UI shows `truenas-leds` as Running.
+- Generate disk I/O; the matching front-panel LED should brighten.
+
+### Notes
+
+- The container runs with `CAP_SYS_RAWIO` and direct access to `/dev/i2c-2`
+  only — not `privileged`.
+- `/sys`, `/dev/disk/by-path`, and `/proc/diskstats` are bind-mounted
+  read-only so the binary can discover disks and read IO counters.
+- The I2C bus index can shift across kernel updates. If LEDs stop responding
+  after a TrueNAS upgrade, re-run `i2cdetect -l` and update `config.yaml`.
+- TrueNAS itself uses SMBus for sensor reads; no conflicts have been observed,
+  but the two do share the bus.
+
+## Install on bare metal (non-TrueNAS)
 
 ```bash
 go build -o truenas-leds .
+sudo install -m 0755 truenas-leds /usr/local/bin/
+sudo install -m 0644 -D config.yaml /etc/truenas-leds/config.yaml
+sudo install -m 0644 truenas-leds.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo systemctl enable --now truenas-leds.service
 ```
 
-## Running
+## Configuration
 
-```bash
-./truenas-leds --config=config.yaml
+```yaml
+# I2C device path for LED control. Find yours with: i2cdetect -l
+device: /dev/i2c-2
+
+# How often to poll for disk and network activity (10ms – 5000ms).
+poll_interval: 100ms
+
+# How long one full rainbow cycle takes on idle disks (1s – 10s).
+rainbow_cycle_time: 3s
+
+# Rainbow color cycling on inactive disks. False = LEDs off when idle.
+enable_rainbow: true
+
+# Brightness for rainbow colors (0–255). Ignored if enable_rainbow: false.
+rainbow_brightness: 48
 ```
 
-## Finding your i2c device
+| Option              | Type     | Default       | Description                                                   |
+|---------------------|----------|---------------|---------------------------------------------------------------|
+| `device`            | string   | `/dev/i2c-2`  | I2C device path for communicating with the LEDs              |
+| `poll_interval`     | duration | `100ms`       | Frequency of disk/network activity polling                   |
+| `rainbow_cycle_time`| duration | `3s`          | Time for one complete rainbow cycle                          |
+| `enable_rainbow`    | bool     | `true`        | Show rainbow colors on inactive disks                        |
+| `rainbow_brightness`| int      | `48`          | Brightness level for rainbow (0–255)                         |
 
-The default i2c device may not work for you. Find one that does.
+### LED behavior
+
+- **Red** — disk write / network transmit
+- **Blue** — disk read / network receive
+- **Purple** — mixed activity
+- **Rainbow** — inactive (when `enable_rainbow: true`)
+- **Off** — inactive (when `enable_rainbow: false`)
+
+Brightness is scaled with activity intensity.
+
+## Container image
+
+Built and published by GitHub Actions on every push to `main` and on tags:
+
+```
+ghcr.io/adamherbert/ugreen-truenas-leds:latest
+ghcr.io/adamherbert/ugreen-truenas-leds:vX.Y.Z
+ghcr.io/adamherbert/ugreen-truenas-leds:sha-<short>
+```
+
+`linux/amd64` only — the UGREEN DXP lineup is x86.
+
+First-time setup: after the initial push, mark the GHCR package as **public**
+under the fork's repository settings → Packages, or `docker pull` will require
+authentication.
+
+## Development
 
 ```bash
-$ i2cdetect -l
+go build -o truenas-leds .
+./truenas-leds -config config.yaml
+```
+
+Test locally:
+
+```bash
+go test ./...
 ```

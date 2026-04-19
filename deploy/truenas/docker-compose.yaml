@@ -1,0 +1,15 @@
+services:
+  truenas-leds:
+    image: ghcr.io/adamherbert/ugreen-truenas-leds:latest
+    container_name: truenas-leds
+    restart: unless-stopped
+    cap_add:
+      - SYS_RAWIO
+    devices:
+      - "/dev/i2c-2:/dev/i2c-2"
+    volumes:
+      - /mnt/POOL/apps/truenas-leds/config.yaml:/etc/truenas-leds/config.yaml:ro
+      - /sys:/sys:ro
+      - /dev/disk/by-path:/dev/disk/by-path:ro
+      - /proc/diskstats:/proc/diskstats:ro
+      - /run/udev:/run/udev:ro

@@ -125,7 +125,7 @@ func (am *ActivityMonitor) Monitor() {
 	conf := am.configLoader.Config()
 	subscriber := am.configLoader.Subscribe()
 
-	ticker := time.NewTicker(conf.PollInterval * time.Millisecond)
+	ticker := time.NewTicker(conf.PollInterval)
 	defer ticker.Stop()
 
 	devices := []string{}
